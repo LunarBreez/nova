@@ -1,0 +1,20 @@
+[package]
+name = "nova-gui"
+description = "Nova : interface native gpui pour lancer un relevé CBOM et en lire le résumé."
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+version.workspace = true
+repository.workspace = true
+publish = false
+
+[[bin]]
+name = "nova-gui"
+path = "src/main.rs"
+
+[dependencies]
+nova-core = { path = "../nova-core" }
+gpui = "=0.2.2"
+
+[lints]
+workspace = true

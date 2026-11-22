@@ -1,0 +1,19 @@
+[package]
+name = "nova-cli"
+description = "Relevé CBOM (Cyber Bill of Materials) d'une machine, hors ligne, en ligne de commande."
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+version.workspace = true
+repository.workspace = true
+
+[[bin]]
+name = "nova"
+path = "src/main.rs"
+
+[dependencies]
+clap = { version = "4.6", features = ["derive"] }
+nova-core = { path = "../nova-core" }
+
+[lints]
+workspace = true

@@ -1,0 +1,982 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Cbom",
+  "description": "Un relevé CBOM : l'état d'une machine à un instant donné.",
+  "type": "object",
+  "properties": {
+    "accounts": {
+      "description": "Comptes locaux.",
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/Account"
+      }
+    },
+    "asset": {
+      "description": "La machine relevée.",
+      "$ref": "#/$defs/Asset"
+    },
+    "collection": {
+      "description": "Comment, quand et par quoi le relevé a été produit.",
+      "$ref": "#/$defs/Collection"
+    },
+    "files": {
+      "description": "Référence vers la liste des empreintes de fichiers, si elle a été relevée.",
+      "anyOf": [
+        {
+          "$ref": "#/$defs/FileInventory"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "firmware": {
+      "description": "Firmware et démarrage.",
+      "$ref": "#/$defs/FirmwareSection"
+    },
+    "format": {
+      "description": "Toujours `nova-cbom`.",
+      "type": "string"
+    },
+    "format_version": {
+      "description": "Version du format, par exemple `1.0`.",
+      "type": "string"
+    },
+    "hardware": {
+      "description": "Matériel.",
+      "$ref": "#/$defs/Hardware"
+    },
+    "network": {
+      "description": "Interfaces réseau et ports à l'écoute.",
+      "$ref": "#/$defs/Network"
+    },
+    "operating_system": {
+      "description": "Système d'exploitation.",
+      "$ref": "#/$defs/OperatingSystem"
+    },
+    "services": {
+      "description": "Services déclarés au gestionnaire de services.",
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/Service"
+      }
+    },
+    "software": {
+      "description": "Logiciels installés.",
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/Software"
+      }
+    }
+  },
+  "required": [
+    "format",
+    "format_version",
+    "collection",
+    "asset",
+    "hardware",
+    "firmware",
+    "operating_system",
+    "software",
+    "network",
+    "services",
+    "accounts"
+  ],
+  "$defs": {
+    "Account": {
+      "description": "Un compte local.",
+      "type": "object",
+      "properties": {
+        "gid": {
+          "description": "Groupe principal.",
+          "type": "integer",
+          "format": "uint32",
+          "minimum": 0
+        },
+        "home": {
+          "description": "Répertoire personnel.",
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "name": {
+          "description": "Nom du compte.",
+          "type": "string"
+        },
+        "shell": {
+          "description": "Interpréteur de connexion.",
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "uid": {
+          "description": "Identifiant numérique.",
+          "type": "integer",
+          "format": "uint32",
+          "minimum": 0
+        }
+      },
+      "required": [
+        "name",
+        "uid",
+        "gid"
+      ]
+    },
+    "Address": {
+      "description": "Une adresse IP et son préfixe.",
+      "type": "object",
+      "properties": {
+        "ip": {
+          "description": "Adresse sous forme canonique.",
+          "type": "string"
+        },
+        "prefix_length": {
+          "description": "Longueur du préfixe.",
+          "type": [
+            "integer",
+            "null"
+          ],
+          "format": "uint8",
+          "maximum": 255,
+          "minimum": 0
+        }
+      },
+      "required": [
+        "ip"
+      ]
+    },
+    "Asset": {
+      "description": "Identité de la machine relevée.",
+      "type": "object",
+      "properties": {
+        "hostname": {
+          "description": "Nom d'hôte.",
+          "type": "string"
+        },
+        "id": {
+          "description": "Identifiant d'inventaire donné par l'organisation.",
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "site": {
+          "description": "Site ou installation où se trouve la machine.",
+          "type": [
+            "string",
+            "null"
+          ]
+        }
+      },
+      "required": [
+        "hostname"
+      ]
+    },
+    "BootMode": {
+      "description": "Mode de démarrage de la machine.",
+      "oneOf": [
+        {
+          "description": "UEFI.",
+          "type": "string",
+          "const": "uefi"
+        },
+        {
+          "description": "BIOS hérité.",
+          "type": "string",
+          "const": "legacy"
+        }
+      ]
+    },
+    "Collection": {
+      "description": "Provenance du relevé.",
+      "type": "object",
+      "properties": {
+        "ended_at": {
+          "description": "Fin du relevé, RFC 3339 en UTC.",
+          "type": "string"
+        },
+        "method": {
+          "description": "Comment les informations ont été obtenues.",
+          "$ref": "#/$defs/Method"
+        },
+        "operator": {
+          "description": "Personne qui a fait le relevé, si elle s'est déclarée.",
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "privileged": {
+          "description": "Le relevé a-t-il été fait avec les droits d'administration ? Sans eux,\ncertaines informations manquent : voir `warnings`.",
+          "type": "boolean"
+        },
+        "started_at": {
+          "description": "Début du relevé, RFC 3339 en UTC.",
+          "type": "string"
+        },
+        "tool": {
+          "description": "L'outil qui a produit le relevé.",
+          "$ref": "#/$defs/Tool"
+        },
+        "warnings": {
+          "description": "Ce que le relevé n'a pas pu lire. Un relevé sans avertissement est complet.",
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/Warning"
+          }
+        }
+      },
+      "required": [
+        "tool",
+        "method",
+        "started_at",
+        "ended_at",
+        "privileged",
+        "warnings"
+      ]
+    },
+    "Disk": {
+      "description": "Un disque.",
+      "type": "object",
+      "properties": {
+        "firmware_version": {
+          "description": "Version du firmware du disque.",
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "model": {
+          "description": "Modèle.",
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "name": {
+          "description": "Nom du périphérique, par exemple `sda`.",
+          "type": "string"
+        },
+        "removable": {
+          "description": "Support amovible ?",
+          "type": "boolean"
+        },
+        "serial": {
+          "description": "Numéro de série.",
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "size_bytes": {
+          "description": "Capacité, en octets.",
+          "type": [
+            "integer",
+            "null"
+          ],
+          "format": "uint64",
+          "minimum": 0
+        },
+        "vendor": {
+          "description": "Constructeur.",
+          "type": [
+            "string",
+            "null"
+          ]
+        }
+      },
+      "required": [
+        "name",
+        "removable"
+      ]
+    },
+    "FileInventory": {
+      "description": "Référence vers la liste des empreintes de fichiers.\n\nLa liste est un fichier JSON Lines voisin du relevé : une ligne\n[`FileEntry`] par fichier, triées par chemin.",
+      "type": "object",
+      "properties": {
+        "algorithm": {
+          "description": "Algorithme des empreintes : `sha256`.",
+          "type": "string"
+        },
+        "entries": {
+          "description": "Nombre de fichiers listés.",
+          "type": "integer",
+          "format": "uint64",
+          "minimum": 0
+        },
+        "excluded": {
+          "description": "Répertoires écartés du parcours.",
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "path": {
+          "description": "Nom du fichier de liste, relatif au relevé.",
+          "type": "string"
+        },
+        "root": {
+          "description": "Racine parcourue.",
+          "type": "string"
+        },
+        "sha256": {
+          "description": "SHA-256 du fichier de liste : le relevé scelle sa liste.",
+          "type": "string"
+        },
+        "total_bytes": {
+          "description": "Taille cumulée des fichiers lus, en octets.",
+          "type": "integer",
+          "format": "uint64",
+          "minimum": 0
+        },
+        "unreadable": {
+          "description": "Nombre de fichiers listés sans empreinte, faute d'avoir pu les lire.",
+          "type": "integer",
+          "format": "uint64",
+          "minimum": 0
+        }
+      },
+      "required": [
+        "path",
+        "sha256",
+        "root",
+        "excluded",
+        "algorithm",
+        "entries",
+        "unreadable",
+        "total_bytes"
+      ]
+    },
+    "Firmware": {
+      "description": "Un firmware.",
+      "type": "object",
+      "properties": {
+        "identifiers": {
+          "description": "Identifiants normalisés.",
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/Identifier"
+          }
+        },
+        "kind": {
+          "description": "Ce que le firmware pilote : `system` (BIOS ou UEFI), `cpu-microcode`.",
+          "type": "string"
+        },
+        "release_date": {
+          "description": "Date de publication, telle que le firmware l'écrit.",
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "vendor": {
+          "description": "Éditeur.",
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "version": {
+          "description": "Version.",
+          "type": [
+            "string",
+            "null"
+          ]
+        }
+      },
+      "required": [
+        "kind"
+      ]
+    },
+    "FirmwareSection": {
+      "description": "Firmware et mode de démarrage.",
+      "type": "object",
+      "properties": {
+        "boot_mode": {
+          "description": "Mode de démarrage.",
+          "anyOf": [
+            {
+              "$ref": "#/$defs/BootMode"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "components": {
+          "description": "Firmwares relevés.",
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/Firmware"
+          }
+        },
+        "secure_boot": {
+          "description": "Secure Boot actif ? Absent si le firmware ne le dit pas.",
+          "type": [
+            "boolean",
+            "null"
+          ]
+        }
+      },
+      "required": [
+        "components"
+      ]
+    },
+    "Hardware": {
+      "description": "Matériel de la machine.",
+      "type": "object",
+      "properties": {
+        "disks": {
+          "description": "Disques.",
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/Disk"
+          }
+        },
+        "machine": {
+          "description": "Le châssis ou la carte, tel que le constructeur le déclare.",
+          "$ref": "#/$defs/Machine"
+        },
+        "memory_bytes": {
+          "description": "Mémoire vive totale, en octets.",
+          "type": [
+            "integer",
+            "null"
+          ],
+          "format": "uint64",
+          "minimum": 0
+        },
+        "processors": {
+          "description": "Processeurs, regroupés par modèle.",
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/Processor"
+          }
+        }
+      },
+      "required": [
+        "machine",
+        "processors",
+        "disks"
+      ]
+    },
+    "Identifier": {
+      "description": "Identifiant normalisé d'un composant.",
+      "type": "object",
+      "properties": {
+        "origin": {
+          "description": "D'où vient l'identifiant, donc quelle confiance lui accorder.",
+          "$ref": "#/$defs/Origin"
+        },
+        "scheme": {
+          "description": "Famille de l'identifiant.",
+          "$ref": "#/$defs/Scheme"
+        },
+        "value": {
+          "description": "L'identifiant lui-même.",
+          "type": "string"
+        }
+      },
+      "required": [
+        "scheme",
+        "value",
+        "origin"
+      ]
+    },
+    "Interface": {
+      "description": "Une interface réseau.\n\nLe couple (MAC, IP) est la clé qui rattache un relevé aux conversations\nd'une matrice de flux LFMS.",
+      "type": "object",
+      "properties": {
+        "addresses": {
+          "description": "Adresses IP portées par l'interface.",
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/Address"
+          }
+        },
+        "kind": {
+          "description": "Nature de l'interface.",
+          "$ref": "#/$defs/InterfaceKind"
+        },
+        "mac": {
+          "description": "Adresse MAC canonique : minuscules, séparées par `:`.",
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "mtu": {
+          "description": "MTU.",
+          "type": [
+            "integer",
+            "null"
+          ],
+          "format": "uint32",
+          "minimum": 0
+        },
+        "name": {
+          "description": "Nom de l'interface.",
+          "type": "string"
+        },
+        "state": {
+          "description": "État opérationnel, tel que le système le donne.",
+          "type": [
+            "string",
+            "null"
+          ]
+        }
+      },
+      "required": [
+        "name",
+        "kind",
+        "addresses"
+      ]
+    },
+    "InterfaceKind": {
+      "description": "Nature d'une interface réseau.",
+      "oneOf": [
+        {
+          "description": "Adossée à un périphérique matériel.",
+          "type": "string",
+          "const": "physical"
+        },
+        {
+          "description": "Sans périphérique : pont, `veth`, tunnel.",
+          "type": "string",
+          "const": "virtual"
+        },
+        {
+          "description": "Boucle locale.",
+          "type": "string",
+          "const": "loopback"
+        }
+      ]
+    },
+    "ListeningSocket": {
+      "description": "Un port à l'écoute.",
+      "type": "object",
+      "properties": {
+        "address": {
+          "description": "Adresse d'écoute ; `0.0.0.0` ou `::` pour toutes les interfaces.",
+          "type": "string"
+        },
+        "port": {
+          "description": "Port.",
+          "type": "integer",
+          "format": "uint16",
+          "maximum": 65535,
+          "minimum": 0
+        },
+        "process": {
+          "description": "Processus qui tient le port, s'il a pu être retrouvé.",
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Process"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "protocol": {
+          "description": "Protocole de transport.",
+          "$ref": "#/$defs/Transport"
+        }
+      },
+      "required": [
+        "protocol",
+        "address",
+        "port"
+      ]
+    },
+    "Machine": {
+      "description": "Constructeur et modèle de la machine.",
+      "type": "object",
+      "properties": {
+        "board_model": {
+          "description": "Modèle de la carte mère.",
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "board_vendor": {
+          "description": "Constructeur de la carte mère.",
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "identifiers": {
+          "description": "Identifiants normalisés.",
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/Identifier"
+          }
+        },
+        "model": {
+          "description": "Modèle.",
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "serial": {
+          "description": "Numéro de série.",
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "vendor": {
+          "description": "Constructeur.",
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "version": {
+          "description": "Version ou révision du modèle.",
+          "type": [
+            "string",
+            "null"
+          ]
+        }
+      }
+    },
+    "Method": {
+      "description": "Manière dont les informations d'un relevé ont été obtenues.",
+      "oneOf": [
+        {
+          "description": "Mesurées sur la machine par un collecteur.",
+          "type": "string",
+          "const": "measured"
+        },
+        {
+          "description": "Reprises de fichiers extraits de l'équipement.",
+          "type": "string",
+          "const": "imported"
+        },
+        {
+          "description": "Saisies par une personne.",
+          "type": "string",
+          "const": "declared"
+        }
+      ]
+    },
+    "Network": {
+      "description": "Réseau de la machine.",
+      "type": "object",
+      "properties": {
+        "interfaces": {
+          "description": "Interfaces réseau.",
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/Interface"
+          }
+        },
+        "listening_sockets": {
+          "description": "Ports sur lesquels la machine attend des connexions.",
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/ListeningSocket"
+          }
+        }
+      },
+      "required": [
+        "interfaces",
+        "listening_sockets"
+      ]
+    },
+    "OperatingSystem": {
+      "description": "Système d'exploitation.",
+      "type": "object",
+      "properties": {
+        "architecture": {
+          "description": "Architecture.",
+          "type": "string"
+        },
+        "family": {
+          "description": "Famille : `linux`, `windows`, `macos`.",
+          "type": "string"
+        },
+        "id": {
+          "description": "Identifiant court de la distribution, par exemple `debian`.",
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "identifiers": {
+          "description": "Identifiants normalisés.",
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/Identifier"
+          }
+        },
+        "kernel_release": {
+          "description": "Version du noyau.",
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "kernel_version": {
+          "description": "Détail de compilation du noyau.",
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "name": {
+          "description": "Nom.",
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "pretty_name": {
+          "description": "Nom complet affichable.",
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "version": {
+          "description": "Version.",
+          "type": [
+            "string",
+            "null"
+          ]
+        }
+      },
+      "required": [
+        "family",
+        "architecture"
+      ]
+    },
+    "Origin": {
+      "description": "Origine d'un identifiant.",
+      "oneOf": [
+        {
+          "description": "Construit mécaniquement depuis le gestionnaire de paquets : exact.",
+          "type": "string",
+          "const": "computed"
+        },
+        {
+          "description": "Écrit par le système lui-même : exact.",
+          "type": "string",
+          "const": "declared"
+        },
+        {
+          "description": "Deviné depuis l'éditeur, le produit et la version : à confirmer.",
+          "type": "string",
+          "const": "candidate"
+        }
+      ]
+    },
+    "Process": {
+      "description": "Un processus.",
+      "type": "object",
+      "properties": {
+        "executable": {
+          "description": "Chemin de l'exécutable.",
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "name": {
+          "description": "Nom court.",
+          "type": "string"
+        },
+        "pid": {
+          "description": "Identifiant du processus au moment du relevé.",
+          "type": "integer",
+          "format": "uint32",
+          "minimum": 0
+        }
+      },
+      "required": [
+        "pid",
+        "name"
+      ]
+    },
+    "Processor": {
+      "description": "Un modèle de processeur et le nombre de cœurs logiques qui le portent.",
+      "type": "object",
+      "properties": {
+        "architecture": {
+          "description": "Architecture, par exemple `x86_64` ou `aarch64`.",
+          "type": "string"
+        },
+        "logical_cores": {
+          "description": "Nombre de cœurs logiques de ce modèle.",
+          "type": "integer",
+          "format": "uint32",
+          "minimum": 0
+        },
+        "model": {
+          "description": "Modèle.",
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "vendor": {
+          "description": "Constructeur.",
+          "type": [
+            "string",
+            "null"
+          ]
+        }
+      },
+      "required": [
+        "architecture",
+        "logical_cores"
+      ]
+    },
+    "Scheme": {
+      "description": "Famille d'un identifiant.",
+      "oneOf": [
+        {
+          "description": "Package URL.",
+          "type": "string",
+          "const": "purl"
+        },
+        {
+          "description": "Common Platform Enumeration.",
+          "type": "string",
+          "const": "cpe"
+        }
+      ]
+    },
+    "Service": {
+      "description": "Un service.",
+      "type": "object",
+      "properties": {
+        "manager": {
+          "description": "Gestionnaire de services : `systemd`.",
+          "type": "string"
+        },
+        "name": {
+          "description": "Nom du service.",
+          "type": "string"
+        },
+        "running": {
+          "description": "Le service tournait-il au moment du relevé ?",
+          "type": "boolean"
+        },
+        "startup": {
+          "description": "Mode de démarrage, tel que le gestionnaire le donne (`enabled`, `disabled`…).",
+          "type": [
+            "string",
+            "null"
+          ]
+        }
+      },
+      "required": [
+        "name",
+        "manager",
+        "running"
+      ]
+    },
+    "Software": {
+      "description": "Un logiciel installé.",
+      "type": "object",
+      "properties": {
+        "architecture": {
+          "description": "Architecture du paquet.",
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "identifiers": {
+          "description": "Identifiants normalisés.",
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/Identifier"
+          }
+        },
+        "name": {
+          "description": "Nom.",
+          "type": "string"
+        },
+        "source": {
+          "description": "D'où vient l'information : `dpkg`, `rpm`, `apk`, `pacman`.",
+          "type": "string"
+        },
+        "vendor": {
+          "description": "Éditeur ou mainteneur.",
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "version": {
+          "description": "Version, telle que la source la donne.",
+          "type": "string"
+        }
+      },
+      "required": [
+        "name",
+        "version",
+        "source"
+      ]
+    },
+    "Tool": {
+      "description": "Outil à l'origine d'un relevé.",
+      "type": "object",
+      "properties": {
+        "name": {
+          "description": "Nom de l'outil.",
+          "type": "string"
+        },
+        "version": {
+          "description": "Version de l'outil.",
+          "type": "string"
+        }
+      },
+      "required": [
+        "name",
+        "version"
+      ]
+    },
+    "Transport": {
+      "description": "Protocole de transport.",
+      "oneOf": [
+        {
+          "description": "TCP.",
+          "type": "string",
+          "const": "tcp"
+        },
+        {
+          "description": "UDP.",
+          "type": "string",
+          "const": "udp"
+        }
+      ]
+    },
+    "Warning": {
+      "description": "Information que le relevé n'a pas pu obtenir.",
+      "type": "object",
+      "properties": {
+        "message": {
+          "description": "Ce qui manque et pourquoi.",
+          "type": "string"
+        },
+        "section": {
+          "description": "Rubrique concernée, par exemple `hardware` ou `network`.",
+          "type": "string"
+        }
+      },
+      "required": [
+        "section",
+        "message"
+      ]
+    }
+  }
+}

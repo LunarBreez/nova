@@ -1,0 +1,30 @@
+[workspace]
+resolver = "2"
+# nova-core : format du relevé, collecteurs, export CycloneDX ;
+# nova-cli : la commande `nova` ; nova-gui : l'interface native gpui.
+members = ["crates/nova-core", "crates/nova-cli", "crates/nova-gui"]
+# L'interface tire gpui et ses bibliothèques système : elle ne se construit
+# que sur demande (`cargo build -p nova-gui`), pour que la commande reste
+# légère à compiler et à porter.
+default-members = ["crates/nova-core", "crates/nova-cli"]
+
+[workspace.package]
+edition = "2024"
+rust-version = "1.88"
+license = "AGPL-3.0-only"
+version = "0.1.0"
+repository = "https://github.com/LunarBreez/nova"
+
+[workspace.lints.rust]
+missing_docs = "warn"
+unsafe_code = "forbid"
+
+[workspace.lints.clippy]
+unwrap_used = "warn"
+expect_used = "warn"
+panic = "warn"
+
+[profile.release]
+lto = true
+codegen-units = 1
+strip = true
