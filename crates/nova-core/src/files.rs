@@ -617,9 +617,11 @@ mod tests {
         let root = temp_dir("order");
         let mut expected = Vec::new();
         for directory in ["a", "a.b", "a/c", "b"] {
-            fs::create_dir_all(root.join(directory)).unwrap();
+            // Composant par composant : Windows n'écrit pas les chemins avec `/`.
+            let directory_path = directory.split('/').fold(root.clone(), |p, c| p.join(c));
+            fs::create_dir_all(&directory_path).unwrap();
             for index in 0..300 {
-                let path = root.join(directory).join(format!("f{index:03}"));
+                let path = directory_path.join(format!("f{index:03}"));
                 fs::write(&path, format!("{directory}{index}")).unwrap();
                 expected.push(path);
             }
