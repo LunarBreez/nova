@@ -60,9 +60,35 @@ numéro de série, processus des autres comptes, fichiers protégés.
 | `nova collect` | relève la machine |
 | `nova collect --no-files` | relève sans les empreintes de fichiers |
 | `nova collect --files-root /opt --exclude /opt/cache` | limite les empreintes à une arborescence |
+| `nova collect -x` | n'entre pas dans les autres systèmes de fichiers : partages réseau, disques externes |
+| `nova collect --hash-sparse` | lit aussi les fichiers creux géants |
 | `nova verify RELEVE.cbom.json` | vérifie que la liste d'empreintes est celle que le relevé scelle |
 | `nova export cyclonedx RELEVE.cbom.json` | exporte les composants en CycloneDX 1.6 |
 | `nova schema` | affiche le schéma JSON du format |
+
+### Durée et mémoire des empreintes
+
+Lire tous les fichiers prend le temps que le disque met à les donner. Nova
+annonce le volume à lire avant de commencer, puis la durée restante.
+
+| Mesure sur un poste de développement | Valeur |
+| --- | --- |
+| Fichiers relevés | 1,8 million, 270 Go, sur un SSD SATA |
+| Durée | 12 minutes |
+| Mémoire maximale | 100 Mo |
+
+La liste est écrite au fil de l'eau : la mémoire ne dépend pas du nombre de
+fichiers. Trois cas à connaître :
+
+- **Fichiers creux.** Un fichier qui annonce plus de 1 Gio de vide, comme
+  `/var/log/lastlog` sur certaines machines, est listé sans empreinte au lieu
+  de bloquer le relevé. `--hash-sparse` le lit quand même.
+- **Partages réseau et disques externes.** Ils sont parcourus par défaut.
+  `-x` les écarte, mais écarte aussi toute partition montée à part (`/boot/efi`,
+  `/home` sur un autre disque, paquets snap) : le relevé nomme chaque point de
+  montage laissé de côté.
+- **Dossier de sortie.** La liste en cours d'écriture n'est pas relevée
+  elle-même, même si le dossier de sortie est sous la racine parcourue.
 
 L'interface fait la même chose dans une fenêtre :
 

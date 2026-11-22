@@ -1,4 +1,4 @@
-# Format du relevé Nova (`nova-cbom` 1.0)
+# Format du relevé Nova (`nova-cbom` 1.1)
 
 Référence exacte : [`schema/nova-cbom-1.schema.json`](../schema/nova-cbom-1.schema.json),
 généré depuis le code (`nova schema`). Ce document en donne les règles.
@@ -37,7 +37,7 @@ centaines de milliers de lignes ; le relevé la référence dans sa rubrique
 
 | Clé | Contenu |
 | --- | --- |
-| `format`, `format_version` | `nova-cbom`, `1.0` |
+| `format`, `format_version` | `nova-cbom`, `1.1` |
 | `collection` | outil, méthode (`measured`, `imported`, `declared`), début et fin, droits, opérateur, avertissements |
 | `asset` | identifiant d'inventaire, nom d'hôte, site |
 | `hardware` | machine, processeurs, mémoire, disques |
@@ -59,10 +59,26 @@ programme ne peut tourner (fichiers extraits, saisie manuelle).
 ```json
 {"path":"/etc/hostname","size":11,"sha256":"…"}
 {"path":"/etc/shadow","size":1432,"error":"permission denied"}
+{"path":"/var/log/lastlog","size":337154048000,"error":"sparse file, not read"}
 ```
 
 Le parcours ne suit aucun lien symbolique, ne lit que les fichiers ordinaires
 et écarte par défaut `/proc`, `/sys`, `/dev` et `/run`.
+
+- **Ordre.** Les lignes suivent un parcours en profondeur où chaque
+  répertoire est lu trié par nom : `/a/x` vient avant `/a.b`. La liste est
+  écrite au fil de l'eau ; un lecteur peut la lire ligne à ligne sans la
+  charger en entier.
+- **Fichiers creux.** Un fichier qui annonce plus de 1 Gio de vide (limite
+  écrite dans `files.sparse_limit`) est listé avec sa taille, sans empreinte,
+  avec la raison `sparse file, not read`. `files.sparse_skipped` les compte.
+  Le lire n'apporterait presque que des zéros et peut durer des heures.
+- **Autres systèmes de fichiers.** Si `files.one_file_system` est vrai, le
+  parcours n'est pas entré dans les points de montage ; ils sont nommés dans
+  `files.skipped_mounts`.
+
+Depuis la version 1.1 : `one_file_system`, `skipped_mounts`, `sparse_limit`
+et `sparse_skipped` dans `files`.
 
 ## Évolution
 

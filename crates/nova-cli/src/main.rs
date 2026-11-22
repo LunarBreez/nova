@@ -57,6 +57,14 @@ struct CollectArgs {
     /// Nombre de fils de calcul des empreintes (par défaut : un par cœur).
     #[arg(long, conflicts_with = "no_files")]
     jobs: Option<usize>,
+    /// Ne pas entrer dans les autres systèmes de fichiers montés sous la
+    /// racine : partages réseau, disques externes.
+    #[arg(short = 'x', long, conflicts_with = "no_files")]
+    one_file_system: bool,
+    /// Lire aussi les fichiers creux géants, au lieu de les lister sans
+    /// empreinte au-delà de 1 Gio de vide.
+    #[arg(long, conflicts_with = "no_files")]
+    hash_sparse: bool,
     /// Racine du système à lire, pour relever une arborescence d'essai.
     #[arg(long, default_value = "/", hide = true)]
     sysroot: PathBuf,
@@ -87,6 +95,10 @@ fn run_collect(args: CollectArgs) -> Result<()> {
         if let Some(jobs) = args.jobs {
             options.jobs = jobs;
         }
+        options.one_file_system = args.one_file_system;
+        if args.hash_sparse {
+            options.sparse_limit = None;
+        }
         options
     });
     let options = collect::Options {
@@ -95,6 +107,7 @@ fn run_collect(args: CollectArgs) -> Result<()> {
         site: args.site,
         operator: args.operator,
         files,
+        work_dir: args.output.clone(),
     };
     eprintln!("Relevé en cours…");
     let collected = collect::collect(&options)?;
@@ -112,8 +125,11 @@ fn run_collect(args: CollectArgs) -> Result<()> {
     if let (Some(path), Some(inventory)) = (&written.files, &cbom.files) {
         println!("Empreintes écrites : {}", path.display());
         println!(
-            "  {} fichier(s), dont {} sans empreinte faute d'avoir pu être lu(s)",
-            inventory.entries, inventory.unreadable
+            "  {} fichier(s), dont {} sans empreinte ({} illisible(s), {} creux)",
+            inventory.entries,
+            inventory.unreadable,
+            inventory.unreadable - inventory.sparse_skipped,
+            inventory.sparse_skipped
         );
     }
     if !cbom.collection.warnings.is_empty() {

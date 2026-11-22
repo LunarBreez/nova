@@ -23,6 +23,9 @@ pub struct Options {
     pub operator: Option<String>,
     /// Empreintes de fichiers à relever ; `None` pour s'en passer.
     pub files: Option<files::Options>,
+    /// Répertoire où la liste des empreintes s'écrit pendant le parcours :
+    /// le dossier de sortie du relevé, pour ne rien écrire ailleurs.
+    pub work_dir: PathBuf,
 }
 
 impl Default for Options {
@@ -33,6 +36,7 @@ impl Default for Options {
             site: None,
             operator: None,
             files: Some(files::Options::for_root("/")),
+            work_dir: PathBuf::from("."),
         }
     }
 }
@@ -51,6 +55,7 @@ pub struct Collected {
 pub fn collect(options: &Options) -> Result<Collected> {
     use std::time::SystemTime;
 
+    use crate::error::Context;
     use crate::model::{Asset, Collection, FORMAT, FORMAT_VERSION, Method, Tool};
     use crate::time::Civil;
     use linux::{Sysroot, Warnings};
@@ -76,17 +81,46 @@ pub fn collect(options: &Options) -> Result<Collected> {
     let services = linux::services(&sysroot, &mut warnings);
     let accounts = linux::accounts(&sysroot, &mut warnings);
 
-    let scan = options.files.as_ref().map(files::scan).transpose()?;
-    if let Some(scan) = &scan
-        && let Some(first) = scan.unreadable_directories.first()
-    {
-        warnings.push(
-            "files",
-            format!(
-                "{} répertoire(s) illisible(s), dont {first}",
-                scan.unreadable_directories.len()
-            ),
-        );
+    let scan = match &options.files {
+        Some(files) => {
+            std::fs::create_dir_all(&options.work_dir)
+                .context(|| format!("création de {}", options.work_dir.display()))?;
+            let list = options
+                .work_dir
+                .join(format!(".nova-{}.files.jsonl.part", std::process::id()));
+            Some(files::scan(files, &list)?)
+        }
+        None => None,
+    };
+    if let Some(scan) = &scan {
+        if let Some(first) = scan.unreadable_directories.first() {
+            warnings.push(
+                "files",
+                format!(
+                    "{} répertoire(s) illisible(s), dont {first}",
+                    scan.unreadable_directories.len()
+                ),
+            );
+        }
+        if scan.sparse_skipped > 0 {
+            warnings.push(
+                "files",
+                format!(
+                    "{} fichier(s) creux listé(s) sans empreinte : plus de {} octets de vide",
+                    scan.sparse_skipped,
+                    scan.options.sparse_limit.unwrap_or_default()
+                ),
+            );
+        }
+        if !scan.skipped_mounts.is_empty() {
+            warnings.push(
+                "files",
+                format!(
+                    "points de montage non traversés : {}",
+                    scan.skipped_mounts.join(", ")
+                ),
+            );
+        }
     }
 
     let cbom = Cbom {

@@ -86,6 +86,7 @@ fn options(root: &Path, with_files: bool) -> collect::Options {
         site: Some("Usine Nord".into()),
         operator: None,
         files: with_files.then(|| files::Options::for_root(root.join("etc"))),
+        work_dir: root.join("sortie"),
     }
 }
 

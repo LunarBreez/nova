@@ -11,7 +11,7 @@ use std::path::{Path, PathBuf};
 
 use crate::collect::Collected;
 use crate::error::{Context, Error, Result};
-use crate::files::sha256_hex;
+use crate::files::sha256_file;
 use crate::model::{Cbom, FORMAT, FileInventory};
 
 /// Fichiers écrits pour un relevé.
@@ -56,10 +56,20 @@ pub fn base_name(cbom: &Cbom) -> String {
     format!("{date}_{}", file_stem_part(machine))
 }
 
+/// Déplace un fichier ; le copie si la destination est sur un autre disque.
+fn move_file(from: &Path, to: &Path) -> Result<()> {
+    if fs::rename(from, to).is_ok() {
+        return Ok(());
+    }
+    fs::copy(from, to).context(|| format!("écriture de {}", to.display()))?;
+    let _ = fs::remove_file(from);
+    Ok(())
+}
+
 /// Écrit un relevé dans un répertoire et rend les fichiers créés.
 ///
-/// La rubrique `files` du relevé est remplie ici, une fois la liste écrite :
-/// c'est son contenu exact qui est scellé.
+/// La liste des empreintes, déjà écrite pendant le parcours, prend ici son
+/// nom définitif ; la rubrique `files` du relevé la référence et la scelle.
 pub fn write(directory: &Path, collected: Collected) -> Result<(Cbom, Written)> {
     let Collected { mut cbom, scan } = collected;
     fs::create_dir_all(directory).context(|| format!("création de {}", directory.display()))?;
@@ -68,34 +78,23 @@ pub fn write(directory: &Path, collected: Collected) -> Result<(Cbom, Written)> 
     let mut files_path = None;
     if let Some(scan) = scan {
         let name = format!("{base}.files.jsonl");
-        let mut lines = String::new();
-        let (mut unreadable, mut total_bytes) = (0_u64, 0_u64);
-        for entry in &scan.entries {
-            if entry.sha256.is_none() {
-                unreadable += 1;
-            } else {
-                total_bytes += entry.size.unwrap_or(0);
-            }
-            lines
-                .push_str(&serde_json::to_string(entry).context(|| "liste des empreintes".into())?);
-            lines.push('\n');
-        }
+        let path = directory.join(&name);
+        move_file(&scan.list, &path)?;
+        let text = |path: &PathBuf| path.to_string_lossy().into_owned();
         cbom.files = Some(FileInventory {
-            path: name.clone(),
-            sha256: sha256_hex(lines.as_bytes()),
-            root: scan.root.to_string_lossy().into_owned(),
-            excluded: scan
-                .excluded
-                .iter()
-                .map(|path| path.to_string_lossy().into_owned())
-                .collect(),
+            path: name,
+            sha256: scan.sha256,
+            root: text(&scan.options.root),
+            excluded: scan.options.excluded.iter().map(text).collect(),
+            one_file_system: scan.options.one_file_system,
+            skipped_mounts: scan.skipped_mounts,
+            sparse_limit: scan.options.sparse_limit,
             algorithm: "sha256".into(),
-            entries: scan.entries.len() as u64,
-            unreadable,
-            total_bytes,
+            entries: scan.entries,
+            unreadable: scan.unreadable,
+            sparse_skipped: scan.sparse_skipped,
+            total_bytes: scan.total_bytes,
         });
-        let path = directory.join(name);
-        fs::write(&path, lines).context(|| format!("écriture de {}", path.display()))?;
         files_path = Some(path);
     }
 
@@ -147,8 +146,7 @@ pub fn verify_files(cbom_path: &Path, cbom: &Cbom) -> Result<u64> {
         .parent()
         .unwrap_or_else(|| Path::new("."))
         .join(&inventory.path);
-    let bytes = fs::read(&path).context(|| format!("lecture de {}", path.display()))?;
-    let actual = sha256_hex(&bytes);
+    let actual = sha256_file(&path).context(|| format!("lecture de {}", path.display()))?;
     if actual != inventory.sha256 {
         return Err(Error::new(format!(
             "{} ne correspond pas au relevé : SHA-256 {actual}, attendu {}",

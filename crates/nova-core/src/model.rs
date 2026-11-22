@@ -23,14 +23,14 @@ pub const FORMAT: &str = "nova-cbom";
 
 /// Version du format. Le premier nombre change quand un lecteur existant ne
 /// peut plus lire le relevé ; le second quand des champs s'ajoutent.
-pub const FORMAT_VERSION: &str = "1.0";
+pub const FORMAT_VERSION: &str = "1.1";
 
 /// Un relevé CBOM : l'état d'une machine à un instant donné.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, JsonSchema)]
 pub struct Cbom {
     /// Toujours `nova-cbom`.
     pub format: String,
-    /// Version du format, par exemple `1.0`.
+    /// Version du format, par exemple `1.1`.
     pub format_version: String,
     /// Comment, quand et par quoi le relevé a été produit.
     pub collection: Collection,
@@ -460,12 +460,25 @@ pub struct FileInventory {
     pub root: String,
     /// Répertoires écartés du parcours.
     pub excluded: Vec<String>,
+    /// Le parcours est-il resté sur le système de fichiers de la racine ?
+    #[serde(default)]
+    pub one_file_system: bool,
+    /// Points de montage que le parcours n'a pas traversés.
+    #[serde(default)]
+    pub skipped_mounts: Vec<String>,
+    /// Volume de vide, en octets, au-delà duquel un fichier creux est listé
+    /// sans être lu ; absent si tous les fichiers creux ont été lus.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub sparse_limit: Option<u64>,
     /// Algorithme des empreintes : `sha256`.
     pub algorithm: String,
     /// Nombre de fichiers listés.
     pub entries: u64,
     /// Nombre de fichiers listés sans empreinte, faute d'avoir pu les lire.
     pub unreadable: u64,
+    /// Parmi eux, nombre de fichiers creux qui n'ont pas été lus.
+    #[serde(default)]
+    pub sparse_skipped: u64,
     /// Taille cumulée des fichiers lus, en octets.
     pub total_bytes: u64,
 }
@@ -481,7 +494,8 @@ pub struct FileEntry {
     /// SHA-256 du contenu ; absent si le fichier n'a pas pu être lu.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub sha256: Option<String>,
-    /// Raison pour laquelle le fichier n'a pas pu être lu.
+    /// Raison pour laquelle le fichier n'a pas été lu : l'erreur du système,
+    /// ou `sparse file, not read` pour un fichier creux au-delà de la limite.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub error: Option<String>,
 }

@@ -107,6 +107,7 @@ impl NovaWindow {
         cx.notify();
         let options = collect::Options {
             files: self.with_files.then(|| files::Options::for_root("/")),
+            work_dir: self.output.clone(),
             ..collect::Options::default()
         };
         let directory = self.output.clone();
